@@ -59,7 +59,8 @@ config_flags.DEFINE_config_file(
 
 
 def main(_):
-    initialize_compilation_cache(cache_dir="/media/nvmep3p/users/xuc/jax_cache")
+    # initialize_compilation_cache(cache_dir="/media/nvmep3p/users/xuc/jax_cache")
+    initialize_compilation_cache(cache_dir="media/sblee/170d6766-97d9-4917-8fc6-7d6ae84df8961/SSD2/xuc/jax_cache")
     devices = jax.local_devices()
     num_devices = len(devices)
     assert FLAGS.config.batch_size % num_devices == 0

@@ -167,3 +167,6 @@ wandb
 
 *checkpoints/*
 *.zip
+fmb_dataset_builder/custom_dataset/1127_with_pins/*
+fmb_dataset_builder/custom_dataset/custom_dataset/*
+*.npy
