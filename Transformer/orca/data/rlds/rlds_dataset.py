@@ -111,23 +111,29 @@ class RLDSDataset(BaseDataset):
             steps = episode["steps"]
             
             for key in steps:                
-                if key == "observation":
-                    # only decode parts of observation we need for improved data loading speed
-                    for img_key in self._image_obs_key:
-                        steps["observation"][img_key] = builder.info.features["steps"][
-                            "observation"
-                        ][img_key].decode_batch_example(
-                            steps["observation"][img_key]
-                        )
-                    steps["observation"]["state"] = builder.info.features["steps"][
-                        "observation"
-                    ]["state"].decode_batch_example(
-                        steps["observation"]["state"]
-                    )
-                else:
-                    steps[key] = builder.info.features["steps"][
-                        key
-                    ].decode_batch_example(steps[key])
+                # if key == "observation":
+                #     # only decode parts of observation we need for improved data loading speed
+                #     for img_key in self._image_obs_key:
+                #         steps["observation"][img_key] = builder.info.features["steps"][
+                #             "observation"
+                #         ][img_key].decode_batch_example(
+                #             steps["observation"][img_key]
+                #         )
+                #     # steps["observation"]["state"] = builder.info.features["steps"][
+                #     #     "observation"
+                #     # ]["state"].decode_batch_example(
+                #     #     steps["observation"]["state"]
+                #     # )
+                #     # steps["observation"]["state"] = builder.info.features["steps"][
+                #     #     "observation"
+                #     # ]["joint_pos"].decode_batch_example(
+                #     #     steps["observation"]["joint_pos"]
+                #     # )
+                # else:
+                
+                steps[key] = builder.info.features["steps"][
+                    key
+                ].decode_batch_example(steps[key])
             return steps
 
         def _to_transition_trajectories(trajectory: Dict[str, Any]) -> Dict[str, Any]:
@@ -135,13 +141,21 @@ class RLDSDataset(BaseDataset):
             observations = {}
             for key in self._image_obs_key:
                 observations[key] = tf.cast(trajectory["observation"][key], tf.float32) / 127.5 - 1.0
-            observations["proprio"] = trajectory["observation"]["state"]
-            observations["ee_ft"] = trajectory["observation"]["ee_ft"]
-            observations["primitive_id"] = tf.cast(trajectory["observation"]["primitive_id"], tf.uint8)
-            # observations["primitive"] = trajectory["observation"]["primitive"]
-            observations["peg_id"] = trajectory["observation"]["peg_id"]
-            observations["ee_pose"] = trajectory["observation"]["ee_pose"]
-            observations["ee_vel"] = trajectory["observation"]["ee_vel"]
+            observations["proprio"] = trajectory["observation"]["joint_pos"]
+            # observations["proprio"] = trajectory["observation"]["state"]
+            observations["ee_ft"] = trajectory["observation"]["eef_force"]
+            # observations["ee_ft"] = trajectory["observation"]["ee_ft"]
+            observations["primitive_id"] = tf.constant([0], dtype=tf.uint8)
+            # observations["primitive_id"] = tf.cast(trajectory["observation"]["primitive_id"], tf.uint8)
+            observations["primitive"] = trajectory["observation"]["primitive"]
+            observations["peg_id"] = tf.constant([0], dtype=tf.uint8)
+            # observations["peg_id"] = trajectory["observation"]["peg_id"]
+            observations["ee_pose"] = trajectory["observation"]["eef_pose"]
+            # observations["ee_pose"] = trajectory["observation"]["ee_pose"]
+            observations["ee_vel"] = trajectory["observation"]["eef_vel"]
+            # observations["ee_vel"] = trajectory["observation"]["ee_vel"]
+            
+
             return {
                 "observations": {**observations},
                 "next_observations": {**observations}, # FMB doesn't need next obs

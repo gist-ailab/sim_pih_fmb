@@ -114,6 +114,7 @@ def main(_):
         image_processor="default",
         seed=FLAGS.config.seed,
         batch_size=FLAGS.config.batch_size,
+        # batch_size=1,
         obs_horizon=obs_horizon,
         **FLAGS.config.dataset_kwargs
     )
@@ -128,9 +129,21 @@ def main(_):
         train=False,
         **FLAGS.config.dataset_kwargs
     )
+    # get example data without iterator
+    # example_train_data = train_data.get_example_data()
     train_data_iter = train_data.get_iterator()
 
+    tf.print("Loading data successful")
     example_batch = next(train_data_iter)
+    # try:
+    #     example_batch = next(train_data_iter)
+    #     tf.print("Batch Retrieved Successfully")
+    # except tf.errors.InvalidArgumentError as e:
+    #     tf.print("Error:", e)
+    #     raise e
+
+    # logging.info(f"Batch keys: {example_batch.keys()}")
+    # logging.info(f"Observation shape: {example_batch['observations'].shape}")
     logging.info(f"Batch size: {example_batch['actions'].shape[0]}")
     logging.info(f"Number of devices: {num_devices}")
     logging.info(

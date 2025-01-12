@@ -223,31 +223,164 @@ class BaseDataset:
         return traj
 
     def _chunk_act_obs(self, traj):
-        traj_len = len(traj["actions"])
+        # Dynamically obtain the trajectory length
+        traj_len = tf.shape(traj["actions"])[0]
+        
+        # Ensure traj_len is at least 1 to avoid negative indices
+        traj_len = tf.maximum(traj_len, 1)
+        
+        tf.print("Trajectory Length:", traj_len)
+        
         if self.act_pred_horizon is not None:
-            chunk_indices = tf.broadcast_to(
-                tf.range(self.act_pred_horizon), [traj_len, self.act_pred_horizon]
-            ) + tf.broadcast_to(
-                tf.range(traj_len)[:, None], [traj_len, self.act_pred_horizon]
-            )
-            # pads by repeating the last action
-            chunk_indices = tf.minimum(chunk_indices, traj_len - 1)
+        # if True:
+            act_horizon = self.act_pred_horizon
+            # act_horizon = self.obs_horizon
+
+            # Generate range tensors
+            range_act = tf.range(act_horizon)  # Shape: [act_horizon]
+            range_traj = tf.range(traj_len)    # Shape: [traj_len]
+
+            # Broadcast and compute chunk indices
+            range_act_broadcast = tf.broadcast_to(range_act, [traj_len, act_horizon])
+            range_traj_broadcast = tf.broadcast_to(tf.expand_dims(range_traj, axis=1), [traj_len, act_horizon])
+
+            chunk_indices = range_act_broadcast + range_traj_broadcast
+
+            # Pad by repeating the last action if necessary
+            traj_len_minus1 = tf.maximum(traj_len - 1, 0)
+            chunk_indices = tf.minimum(chunk_indices, traj_len_minus1)
+
+            # Debug: Print chunk_indices for actions
+            tf.print("Action Chunk Indices:", chunk_indices)
+
+            # Gather action chunks
             traj["action_chunks"] = tf.gather(traj["actions"], chunk_indices)
+        
         if self.obs_horizon is not None:
-            chunk_indices = tf.broadcast_to(
-                tf.range(-self.obs_horizon + 1, 1), [traj_len, self.obs_horizon]
-            ) + tf.broadcast_to(
-                tf.range(traj_len)[:, None], [traj_len, self.obs_horizon]
-            )
-            # pads by repeating the first observation
+            obs_horizon = self.obs_horizon
+
+            # Generate range tensors
+            range_obs = tf.range(-obs_horizon + 1, 1)  # Shape: [obs_horizon]
+            range_traj = tf.range(traj_len)            # Shape: [traj_len]
+
+            # Compute chunk indices
+            chunk_indices = tf.expand_dims(range_obs, 0) + tf.expand_dims(range_traj, 1)  # Shape: [traj_len, obs_horizon]
+
+            # Pad by repeating the first observation if necessary
             chunk_indices = tf.maximum(chunk_indices, 0)
-            traj["obs_chunks"] = tf.nest.map_structure(
-                lambda x: tf.gather(x, chunk_indices), traj["observations"]
-            )
-            traj["next_obs_chunks"] = tf.nest.map_structure(
-                lambda x: tf.gather(x, chunk_indices), traj["next_observations"]
-            )
+            chunk_indices = tf.minimum(chunk_indices, traj_len - 1)
+
+            # Gather observation chunks
+            def gather_obs(x):
+                return tf.gather(x, chunk_indices)
+
+            obs_chunks = tf.nest.map_structure(gather_obs, traj["observations"])
+            next_obs_chunks = tf.nest.map_structure(gather_obs, traj["next_observations"])
+
+            traj["obs_chunks"] = obs_chunks
+            traj["next_obs_chunks"] = next_obs_chunks
+        
         return traj
+
+    # def _chunk_act_obs(self, traj):
+    #     # Dynamically obtain the trajectory length
+    #     # traj_len = tf.shape(traj["actions"])[0]
+
+    #     # if self.act_pred_horizon is not None:
+    #     #     # Create indices for action chunks
+    #     #     act_horizon = self.act_pred_horizon
+
+    #     #     # Generate range tensors
+    #     #     range_act = tf.range(act_horizon)  # Shape: [act_horizon]
+    #     #     range_traj = tf.range(traj_len)    # Shape: [traj_len]
+
+    #     #     # Broadcast and compute chunk indices
+    #     #     chunk_indices = tf.broadcast_to(range_act, [traj_len, act_horizon]) + \
+    #     #                     tf.broadcast_to(tf.expand_dims(range_traj, axis=1), [traj_len, act_horizon])
+
+    #     #     # Pad by repeating the last action if necessary
+    #     #     chunk_indices = tf.minimum(chunk_indices, traj_len - 1)
+
+    #     #     # Gather action chunks
+    #     #     traj["action_chunks"] = tf.gather(traj["actions"], chunk_indices)
+    #     traj_len = len(traj["actions"])
+    #     if self.act_pred_horizon is not None:
+    #         chunk_indices = tf.broadcast_to(
+    #             tf.range(self.act_pred_horizon), [traj_len, self.act_pred_horizon]
+    #         ) + tf.broadcast_to(
+    #             tf.range(traj_len)[:, None], [traj_len, self.act_pred_horizon]
+    #         )
+    #         # pads by repeating the last action
+    #         chunk_indices = tf.minimum(chunk_indices, traj_len - 1)
+    #         traj["action_chunks"] = tf.gather(traj["actions"], chunk_indices)
+
+    #     if self.obs_horizon is not None:
+    #         # Create indices for observation chunks
+    #         obs_horizon = self.obs_horizon
+
+    #         # Generate range tensors
+    #         range_obs = tf.range(-obs_horizon + 1, 1)  # Shape: [obs_horizon]
+    #         range_traj = tf.range(traj_len)            # Shape: [traj_len]
+
+    #         # Broadcast and compute chunk indices
+    #         chunk_indices = tf.broadcast_to(range_obs, [traj_len, obs_horizon]) + \
+    #                         tf.broadcast_to(tf.expand_dims(range_traj, axis=1), [traj_len, obs_horizon])
+
+    #         # Pad by repeating the first observation if necessary
+    #         chunk_indices = tf.maximum(chunk_indices, 0)
+
+    #         # Define a helper function to gather observations
+    #         def gather_obs(x):
+    #             return tf.gather(x, chunk_indices)
+
+    #         # Gather observation chunks
+    #         traj["obs_chunks"] = tf.nest.map_structure(gather_obs, traj["observations"])
+    #         traj["next_obs_chunks"] = tf.nest.map_structure(gather_obs, traj["next_observations"])
+
+    #     # if self.obs_horizon is not None:
+    #     #     chunk_indices = tf.broadcast_to(
+    #     #         tf.range(-self.obs_horizon + 1, 1), [traj_len, self.obs_horizon]
+    #     #     ) + tf.broadcast_to(
+    #     #         tf.range(traj_len)[:, None], [traj_len, self.obs_horizon]
+    #     #     )
+    #     #     # pads by repeating the first observation
+    #     #     chunk_indices = tf.maximum(chunk_indices, 0)
+    #     #     traj["obs_chunks"] = tf.nest.map_structure(
+    #     #         lambda x: tf.gather(x, chunk_indices), traj["observations"]
+    #     #     )
+    #     #     traj["next_obs_chunks"] = tf.nest.map_structure(
+    #     #         lambda x: tf.gather(x, chunk_indices), traj["next_observations"]
+    #     #     )
+
+    #     return traj
+
+
+    # def _chunk_act_obs(self, traj):
+    #     traj_len = len(traj["actions"])
+    #     if self.act_pred_horizon is not None:
+    #         chunk_indices = tf.broadcast_to(
+    #             tf.range(self.act_pred_horizon), [traj_len, self.act_pred_horizon]
+    #         ) + tf.broadcast_to(
+    #             tf.range(traj_len)[:, None], [traj_len, self.act_pred_horizon]
+    #         )
+    #         # pads by repeating the last action
+    #         chunk_indices = tf.minimum(chunk_indices, traj_len - 1)
+    #         traj["action_chunks"] = tf.gather(traj["actions"], chunk_indices)
+    #     if self.obs_horizon is not None:
+    #         chunk_indices = tf.broadcast_to(
+    #             tf.range(-self.obs_horizon + 1, 1), [traj_len, self.obs_horizon]
+    #         ) + tf.broadcast_to(
+    #             tf.range(traj_len)[:, None], [traj_len, self.obs_horizon]
+    #         )
+    #         # pads by repeating the first observation
+    #         chunk_indices = tf.maximum(chunk_indices, 0)
+    #         traj["obs_chunks"] = tf.nest.map_structure(
+    #             lambda x: tf.gather(x, chunk_indices), traj["observations"]
+    #         )
+    #         traj["next_obs_chunks"] = tf.nest.map_structure(
+    #             lambda x: tf.gather(x, chunk_indices), traj["next_observations"]
+    #         )
+    #     return traj
 
     def _add_goals(self, traj):
         traj = GOAL_RELABELING_FUNCTIONS[self.goal_relabeling_strategy](

@@ -7,8 +7,8 @@ export TF_FORCE_GPU_ALLOW_GROWTH=true
 export PYTHONPATH="$PYTHONPATH:$PROJECT_HOME/src"
  
 python -m src.bc_main \
-        --dataset_path="DATASET_PATH" \
-        --dataset_name="fmb_single_object_insert_dataset:1.0.0" \
+        --dataset_path="/media/sblee/170d6766-97d9-4917-8fc6-7d6ae84df8961/SSD2/workspaces/sim_pih_fmb/fmb_dataset_builder/custom_dataset/custom_dataset" \
+        --dataset_name="custom_dataset:1.0.0" \
         --seed=24 \
         --dataset_image_keys='side_1:wrist_1:wrist_2' \
         --state_keys='tcp_pose:tcp_vel:tcp_force:tcp_torque' \
